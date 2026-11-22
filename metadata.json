@@ -1,0 +1,6 @@
+{
+  "name": "QuickTouch Assist",
+  "description": "Minimalist monochrome assistive touch floating bubble, quick action tray, and offline system controls for volume, brightness, screen timeout, and accessibility actions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
