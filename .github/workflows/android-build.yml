@@ -33,9 +33,18 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          accept-android-sdk-licenses: true
 
-      - name: Accept Android SDK licenses
-        run: yes | sdkmanager --licenses > /dev/null 2>&1 || true
+      - name: Ensure Android SDK licenses & platform packages
+        run: |
+          set +o pipefail
+          SDKMGR=$(command -v sdkmanager || find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}" -name sdkmanager -type f 2>/dev/null | head -n 1)
+          if [ -n "$SDKMGR" ]; then
+            yes | "$SDKMGR" --licenses > /dev/null || true
+            "$SDKMGR" --install "platform-tools" "build-tools;36.0.0" "platforms;android-36" || true
+            "$SDKMGR" --install "platforms;android-36.1" || true
+          fi
 
       - name: Restore debug keystore
         run: |
@@ -43,14 +52,19 @@ jobs:
             base64 -d debug.keystore.base64 > debug.keystore
           fi
 
-      - name: Make Gradle wrapper executable
-        run: chmod +x gradlew
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.3.1"
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --no-daemon
+        run: |
+          if [ -f ./gradlew ] && [ -f gradle/wrapper/gradle-wrapper.jar ]; then
+            chmod +x gradlew
+            ./gradlew assembleDebug --no-daemon --stacktrace
+          else
+            gradle assembleDebug --no-daemon --stacktrace
+          fi
 
       - name: Prepare APK artifact
         run: cp app/build/outputs/apk/debug/app-debug.apk QuickTouch-Assist-debug.apk
@@ -65,6 +79,8 @@ jobs:
       - name: Publish APK to GitHub Releases (Tag)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: QuickTouch-Assist-debug.apk
           generate_release_notes: true
@@ -72,8 +88,12 @@ jobs:
       - name: Update Latest APK Release (Main Branch)
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
         uses: softprops/action-gh-release@v2
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: latest-apk
+          target_commitish: ${{ github.sha }}
           name: QuickTouch Assist — Latest Build
           body: |
             Automated build from `${{ github.ref_name }}` (${{ github.sha }}).
