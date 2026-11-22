@@ -26,44 +26,53 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
         with:
           accept-android-sdk-licenses: true
+          packages: |
+            platform-tools
+            build-tools;36.0.0
+            platforms;android-36.1
 
-      - name: Ensure Android SDK licenses & platform packages
-        run: |
-          set +o pipefail
-          SDKMGR=$(command -v sdkmanager || find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}" -name sdkmanager -type f 2>/dev/null | head -n 1)
-          if [ -n "$SDKMGR" ]; then
-            yes | "$SDKMGR" --licenses > /dev/null || true
-            "$SDKMGR" --install "platform-tools" "build-tools;36.0.0" "platforms;android-36" || true
-            "$SDKMGR" --install "platforms;android-36.1" || true
-          fi
-
-      - name: Restore debug keystore
+      - name: Restore or create debug keystore
         run: |
           if [ ! -f debug.keystore ] && [ -f debug.keystore.base64 ]; then
-            base64 -d debug.keystore.base64 > debug.keystore
+            base64 -d debug.keystore.base64 > debug.keystore || rm -f debug.keystore
+          fi
+          if [ ! -f debug.keystore ]; then
+            keytool -genkeypair -v -keystore debug.keystore \
+              -storepass android -alias androiddebugkey -keypass android \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
           fi
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "9.3.1"
 
       - name: Build Debug APK
         run: |
+          set -o pipefail
           if [ -f ./gradlew ] && [ -f gradle/wrapper/gradle-wrapper.jar ]; then
             chmod +x gradlew
-            ./gradlew assembleDebug --no-daemon --stacktrace
+            CMD="./gradlew"
           else
-            gradle assembleDebug --no-daemon --stacktrace
+            CMD="gradle"
+          fi
+          if ! "$CMD" assembleDebug --no-daemon --stacktrace 2>&1 | tee gradle_build.log; then
+            ERR_MSG=$(grep -E "FAILURE:|What went wrong:|Could not|Execution failed|Exception|ERROR:" gradle_build.log | head -n 12 | tr '\n' ' ')
+            if [ -z "$ERR_MSG" ]; then
+              ERR_MSG=$(tail -n 15 gradle_build.log | tr '\n' ' ')
+            fi
+            echo "::error title=Gradle Build Failed::$ERR_MSG"
+            exit 1
           fi
 
       - name: Prepare APK artifact
