@@ -23,14 +23,21 @@ import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -52,10 +59,12 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.example.MainActivity
 import com.example.R
 import com.example.data.QuickTouchPreferences
+import com.example.system.MediaSessionController
 import com.example.system.SystemController
 import com.example.ui.components.BubbleAvatar
 import com.example.ui.components.CompactPillTray
 import com.example.ui.components.FullControlPanelContent
+import com.example.ui.components.MiniMediaPlayerCard
 import com.example.ui.theme.QuickTouchTheme
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -91,7 +100,7 @@ class FloatingBubbleService : Service() {
 
     val density = resources.displayMetrics.density
     edgeMarginPx = (10 * density).roundToInt()
-    bubbleSizePx = (58 * density).roundToInt()
+    bubbleSizePx = (56 * density).roundToInt()
 
     val (screenW, _) = getScreenDimensions()
     val defaultX = (screenW - bubbleSizePx - edgeMarginPx).coerceAtLeast(edgeMarginPx)
@@ -106,6 +115,7 @@ class FloatingBubbleService : Service() {
       QuickTouchStateHolder.setCustomIconBitmap(prefs.loadCustomIconBitmap())
     }
     QuickTouchStateHolder.setOverlayServiceRunning(true)
+    MediaSessionController.startListening(this)
 
     startForegroundNotification()
 
@@ -220,9 +230,18 @@ class FloatingBubbleService : Service() {
   private fun renderStage(stage: OverlayStage) {
     removeCurrentOverlay()
     when (stage) {
-      OverlayStage.BUBBLE -> showCollapsedBubble()
-      OverlayStage.PILL -> showHorizontalPillTray()
-      OverlayStage.EXPANDED -> showExpandedControlPanel()
+      OverlayStage.BUBBLE -> {
+        MediaSessionController.resetTransientPauseFlag()
+        showCollapsedBubble()
+      }
+      OverlayStage.PILL -> {
+        MediaSessionController.refreshActiveMedia(this)
+        showHorizontalPillTray()
+      }
+      OverlayStage.EXPANDED -> {
+        MediaSessionController.resetTransientPauseFlag()
+        showExpandedControlPanel()
+      }
     }
   }
 
@@ -240,8 +259,8 @@ class FloatingBubbleService : Service() {
 
     val params =
       WindowManager.LayoutParams(
-        WindowManager.LayoutParams.WRAP_CONTENT,
-        WindowManager.LayoutParams.WRAP_CONTENT,
+        bubbleSizePx,
+        bubbleSizePx,
         overlayWindowType(),
         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
           WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
@@ -259,10 +278,11 @@ class FloatingBubbleService : Service() {
         val sharedState by QuickTouchStateHolder.state.collectAsState()
         BubbleAvatar(
           customBitmap = sharedState.customIconBitmap,
-          size = 58.dp,
+          size = 56.dp,
           modifier =
             Modifier.clickable {
               SystemController.refreshAllState(this@FloatingBubbleService)
+              MediaSessionController.refreshActiveMedia(this@FloatingBubbleService)
               QuickTouchStateHolder.setOverlayStage(OverlayStage.PILL)
             },
         )
@@ -313,41 +333,61 @@ class FloatingBubbleService : Service() {
       createOverlayComposeView(lifecycleOwner) {
         val sharedState by QuickTouchStateHolder.state.collectAsState()
         val maxPillWidthDp =
-          ((screenW / resources.displayMetrics.density) - 96f).coerceAtLeast(220f).dp
+          ((screenW / resources.displayMetrics.density) - 88f).coerceAtLeast(220f).dp
+        val cardWidthDp = minOf(296.dp, maxPillWidthDp)
 
-        val pillContent: @Composable () -> Unit = {
-          CompactPillTray(
-            isMuted = sharedState.systemSnapshot.isMuted,
-            onVolumeUp = { SystemController.volumeUp(this@FloatingBubbleService) },
-            onMuteToggle = { SystemController.toggleMute(this@FloatingBubbleService) },
-            onLockScreen = {
-              QuickTouchStateHolder.setOverlayStage(OverlayStage.BUBBLE)
-              SystemController.performLockScreen(this@FloatingBubbleService)
-            },
-            onPowerMenu = {
-              QuickTouchStateHolder.setOverlayStage(OverlayStage.BUBBLE)
-              SystemController.performPowerMenu(this@FloatingBubbleService)
-            },
-            onHome = {
-              QuickTouchStateHolder.setOverlayStage(OverlayStage.BUBBLE)
-              SystemController.performHome(this@FloatingBubbleService)
-            },
-            onSettings = {
-              QuickTouchStateHolder.setOverlayStage(OverlayStage.BUBBLE)
-              SystemController.openSystemSettings(this@FloatingBubbleService)
-            },
-            onExpand = {
-              SystemController.refreshAllState(this@FloatingBubbleService)
-              QuickTouchStateHolder.setOverlayStage(OverlayStage.EXPANDED)
-            },
-            modifier = Modifier.widthIn(max = maxPillWidthDp),
-          )
+        val pillAndMediaColumn: @Composable (Alignment.Horizontal) -> Unit = { horizontalAlign ->
+          Column(horizontalAlignment = horizontalAlign) {
+            CompactPillTray(
+              isMuted = sharedState.systemSnapshot.isMuted,
+              onVolumeUp = { SystemController.volumeUp(this@FloatingBubbleService) },
+              onMuteToggle = { SystemController.toggleMute(this@FloatingBubbleService) },
+              onLockScreen = {
+                QuickTouchStateHolder.setOverlayStage(OverlayStage.BUBBLE)
+                SystemController.performLockScreen(this@FloatingBubbleService)
+              },
+              onPowerMenu = {
+                QuickTouchStateHolder.setOverlayStage(OverlayStage.BUBBLE)
+                SystemController.performPowerMenu(this@FloatingBubbleService)
+              },
+              onHome = {
+                QuickTouchStateHolder.setOverlayStage(OverlayStage.BUBBLE)
+                SystemController.performHome(this@FloatingBubbleService)
+              },
+              onSettings = {
+                QuickTouchStateHolder.setOverlayStage(OverlayStage.BUBBLE)
+                SystemController.openSystemSettings(this@FloatingBubbleService)
+              },
+              onExpand = {
+                SystemController.refreshAllState(this@FloatingBubbleService)
+                QuickTouchStateHolder.setOverlayStage(OverlayStage.EXPANDED)
+              },
+              modifier = Modifier.widthIn(max = maxPillWidthDp),
+            )
+
+            AnimatedVisibility(
+              visible = sharedState.mediaSnapshot.isVisible,
+              enter = fadeIn() + expandVertically(),
+              exit = fadeOut() + shrinkVertically(),
+            ) {
+              Column {
+                Spacer(modifier = Modifier.height(8.dp))
+                MiniMediaPlayerCard(
+                  media = sharedState.mediaSnapshot,
+                  onPrevious = { MediaSessionController.skipToPrevious() },
+                  onPlayPause = { MediaSessionController.togglePlayPause() },
+                  onNext = { MediaSessionController.skipToNext() },
+                  modifier = Modifier.width(cardWidthDp),
+                )
+              }
+            }
+          }
         }
 
         val bubbleContent: @Composable () -> Unit = {
           BubbleAvatar(
             customBitmap = sharedState.customIconBitmap,
-            size = 58.dp,
+            size = 56.dp,
             modifier =
               Modifier.clickable {
                 QuickTouchStateHolder.setOverlayStage(OverlayStage.BUBBLE)
@@ -356,17 +396,17 @@ class FloatingBubbleService : Service() {
         }
 
         Row(
-          verticalAlignment = Alignment.CenterVertically,
+          verticalAlignment = Alignment.Top,
           horizontalArrangement = Arrangement.Center,
         ) {
           if (sharedState.isSnappedRight) {
-            pillContent()
+            pillAndMediaColumn(Alignment.End)
             Spacer(modifier = Modifier.width(8.dp))
             bubbleContent()
           } else {
             bubbleContent()
             Spacer(modifier = Modifier.width(8.dp))
-            pillContent()
+            pillAndMediaColumn(Alignment.Start)
           }
         }
       }

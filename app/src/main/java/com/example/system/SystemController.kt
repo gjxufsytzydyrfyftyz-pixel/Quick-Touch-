@@ -39,12 +39,21 @@ object SystemController {
     return enabledServices.split(':').any { it.equals(expectedComponent, ignoreCase = true) }
   }
 
+  fun isNotificationAccessEnabled(context: Context): Boolean =
+    MediaSessionController.isNotificationAccessEnabled(context)
+
   fun refreshAllState(context: Context) {
     val overlay = hasOverlayPermission(context)
     val accessibility = isAccessibilityEnabled(context)
+    val notificationAccess = isNotificationAccessEnabled(context)
     val canWrite = canWriteSettings(context)
-    QuickTouchStateHolder.updatePermissions(overlay, accessibility, canWrite)
+    QuickTouchStateHolder.updatePermissions(overlay, accessibility, notificationAccess, canWrite)
     QuickTouchStateHolder.updateSystemSnapshot(readSystemSnapshot(context))
+    if (notificationAccess) {
+      MediaSessionController.startListening(context)
+    } else {
+      MediaSessionController.stopListening()
+    }
   }
 
   fun readSystemSnapshot(context: Context): SystemControlSnapshot {
@@ -93,6 +102,14 @@ object SystemController {
   fun openAccessibilitySettings(context: Context) {
     val intent =
       Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      }
+    runCatching { context.startActivity(intent) }
+  }
+
+  fun openNotificationListenerSettings(context: Context) {
+    val intent =
+      Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).apply {
         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       }
     runCatching { context.startActivity(intent) }

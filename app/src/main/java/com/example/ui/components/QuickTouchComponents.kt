@@ -5,6 +5,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -13,10 +14,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -29,10 +32,15 @@ import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.OpenInFull
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.outlined.PowerSettingsNew
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.SkipNext
+import androidx.compose.material.icons.outlined.SkipPrevious
 import androidx.compose.material.icons.outlined.WbSunny
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -66,6 +74,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.R
+import com.example.system.MediaPlaybackSnapshot
 import com.example.system.SystemControlSnapshot
 import com.example.ui.theme.BorderStrong
 import com.example.ui.theme.BorderSubtle
@@ -118,14 +127,15 @@ fun QuickTouchLogoBadge(
 @Composable
 fun BubbleAvatar(
   customBitmap: Bitmap?,
-  size: Dp = 58.dp,
+  size: Dp = 56.dp,
   modifier: Modifier = Modifier,
 ) {
   val imageBitmap = remember(customBitmap) { customBitmap?.asImageBitmap() }
   Box(
     modifier =
       modifier
-        .size(size)
+        .requiredSize(size)
+        .aspectRatio(1f)
         .clip(CircleShape)
         .background(PureBlack)
         .border(1.8.dp, PureWhite, CircleShape)
@@ -268,6 +278,128 @@ private fun PillIconButton(
       contentDescription = contentDescription,
       tint = PureWhite,
       modifier = Modifier.size(20.dp),
+    )
+  }
+}
+
+@Composable
+fun MiniMediaPlayerCard(
+  media: MediaPlaybackSnapshot,
+  onPrevious: () -> Unit,
+  onPlayPause: () -> Unit,
+  onNext: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  val artBitmap = remember(media.albumArt) { media.albumArt?.asImageBitmap() }
+  Surface(
+    modifier = modifier.testTag("mini_media_player_card"),
+    shape = RoundedCornerShape(22.dp),
+    color = PureBlack.copy(alpha = 0.96f),
+    border = BorderStroke(1.dp, BorderStrong.copy(alpha = 0.7f)),
+    shadowElevation = 8.dp,
+  ) {
+    Row(
+      modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Box(
+        modifier =
+          Modifier
+            .size(44.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(SlateCard)
+            .border(1.dp, BorderSubtle, RoundedCornerShape(10.dp)),
+        contentAlignment = Alignment.Center,
+      ) {
+        if (artBitmap != null) {
+          Image(
+            bitmap = artBitmap,
+            contentDescription = stringResource(R.string.media_artwork),
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+          )
+        } else {
+          Icon(
+            imageVector = Icons.Outlined.MusicNote,
+            contentDescription = stringResource(R.string.media_artwork),
+            tint = PureWhite,
+            modifier = Modifier.size(22.dp),
+          )
+        }
+      }
+
+      Column(
+        modifier = Modifier.weight(1f).padding(horizontal = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+      ) {
+        Text(
+          text = media.title.ifBlank { stringResource(R.string.media_unknown_track) },
+          style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+          color = PureWhite,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+          modifier = Modifier.basicMarquee(),
+        )
+        if (media.artist.isNotBlank()) {
+          Text(
+            text = media.artist,
+            style = MaterialTheme.typography.bodySmall,
+            color = TextSecondary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+          )
+        }
+      }
+
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(0.dp),
+      ) {
+        MediaControlButton(
+          icon = Icons.Outlined.SkipPrevious,
+          contentDescription = stringResource(R.string.media_previous),
+          testTag = "media_prev_button",
+          onClick = onPrevious,
+        )
+        MediaControlButton(
+          icon = if (media.isPlaying) Icons.Outlined.Pause else Icons.Outlined.PlayArrow,
+          contentDescription =
+            stringResource(if (media.isPlaying) R.string.media_pause else R.string.media_play),
+          testTag = "media_play_pause_button",
+          onClick = onPlayPause,
+        )
+        MediaControlButton(
+          icon = Icons.Outlined.SkipNext,
+          contentDescription = stringResource(R.string.media_next),
+          testTag = "media_next_button",
+          onClick = onNext,
+        )
+      }
+    }
+  }
+}
+
+@Composable
+private fun MediaControlButton(
+  icon: ImageVector,
+  contentDescription: String,
+  testTag: String,
+  onClick: () -> Unit,
+) {
+  Box(
+    modifier =
+      Modifier
+        .size(width = 36.dp, height = 44.dp)
+        .clip(CircleShape)
+        .clickable(onClick = onClick)
+        .testTag(testTag),
+    contentAlignment = Alignment.Center,
+  ) {
+    Icon(
+      imageVector = icon,
+      contentDescription = contentDescription,
+      tint = PureWhite,
+      modifier = Modifier.size(21.dp),
     )
   }
 }

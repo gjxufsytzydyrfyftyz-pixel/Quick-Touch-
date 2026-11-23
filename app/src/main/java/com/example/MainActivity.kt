@@ -60,6 +60,7 @@ class MainActivity : ComponentActivity() {
           showInAppControlSheet = showInAppSheet,
           onToggleOverlayPermission = viewModel::openOverlayPermissionSettings,
           onToggleAccessibility = viewModel::openAccessibilitySettings,
+          onToggleNotificationAccess = viewModel::openNotificationAccessSettings,
           onChooseImage = {
             photoPickerLauncher.launch(
               PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),

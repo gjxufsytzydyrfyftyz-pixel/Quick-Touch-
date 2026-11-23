@@ -84,6 +84,7 @@ fun MainScreen(
   showInAppControlSheet: Boolean,
   onToggleOverlayPermission: () -> Unit,
   onToggleAccessibility: () -> Unit,
+  onToggleNotificationAccess: () -> Unit,
   onChooseImage: () -> Unit,
   onResetImage: () -> Unit,
   onVolumeUp: () -> Unit,
@@ -210,6 +211,21 @@ fun MainScreen(
           testTag = "accessibility_service_card",
           switchTestTag = "accessibility_service_switch",
           onClick = onToggleAccessibility,
+        )
+
+        // 3. Notification Access Card
+        PermissionStatusCard(
+          title = stringResource(R.string.permission_notification_access_title),
+          statusText =
+            if (state.isNotificationAccessEnabled) {
+              stringResource(R.string.status_enabled)
+            } else {
+              stringResource(R.string.status_disabled)
+            },
+          checked = state.isNotificationAccessEnabled,
+          testTag = "notification_access_card",
+          switchTestTag = "notification_access_switch",
+          onClick = onToggleNotificationAccess,
         )
 
         // 3. Custom Floating Icon Card
@@ -595,6 +611,8 @@ private fun QuickActionTile(
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
+  val contentTint = if (highlighted) PitchBlack else PureWhite
+  val labelTint = if (highlighted) PitchBlack else SoftWhite
   Surface(
     modifier =
       modifier
@@ -604,6 +622,7 @@ private fun QuickActionTile(
         .testTag(testTag),
     shape = RoundedCornerShape(10.dp),
     color = if (highlighted) PureWhite else SlateTile,
+    contentColor = contentTint,
     border = BorderStroke(1.dp, if (highlighted) PureWhite else BorderSubtle),
   ) {
     Column(
@@ -614,14 +633,17 @@ private fun QuickActionTile(
       Icon(
         imageVector = icon,
         contentDescription = label,
-        tint = if (highlighted) PitchBlack else PureWhite,
+        tint = contentTint,
         modifier = Modifier.size(22.dp),
       )
       Spacer(modifier = Modifier.height(6.dp))
       Text(
         text = label,
-        style = MaterialTheme.typography.labelSmall,
-        color = if (highlighted) PitchBlack else SoftWhite,
+        style =
+          MaterialTheme.typography.labelSmall.copy(
+            fontWeight = if (highlighted) FontWeight.SemiBold else FontWeight.Medium,
+          ),
+        color = labelTint,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         textAlign = TextAlign.Center,

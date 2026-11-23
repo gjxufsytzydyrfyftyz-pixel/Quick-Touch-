@@ -71,6 +71,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     SystemController.openAccessibilitySettings(getApplication())
   }
 
+  fun openNotificationAccessSettings() {
+    SystemController.openNotificationListenerSettings(getApplication())
+  }
+
   fun volumeUp() {
     SystemController.volumeUp(getApplication())
   }
