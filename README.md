@@ -1,28 +1,29 @@
-# QuickTouch Assist
+# QuickTouch Assist (By Monkey Group)
 
-Minimalist monochrome dark assistive-touch Android app built with Kotlin and Jetpack Compose. Works 100% offline with zero Firebase or cloud dependencies.
+Minimalist space-black monochrome assistive-touch Android app built with Kotlin and Jetpack Compose. Works 100% offline with zero Firebase or cloud dependencies.
 
-## Features
+## Features (v3)
 
-- **Main Control Hub**:
-  - Live status & quick shortcuts for **Floating Overlay Permission** and **Accessibility Service**
-  - **Custom Floating Icon** picker (uses Android Photo Picker, auto-crops and stores locally in internal storage)
-  - **Quick Actions Grid**: Volume Up, Mute, Lock Screen, Power Menu, Home, Settings
-  - **Brightness Presets**: 0%, 25%, 60%, 100%
-- **Floating Bubble & Two-Stage Tray (`SYSTEM_ALERT_WINDOW`)**:
-  - Draggable circular floating bubble with smooth snap-to-edge behavior
-  - **Compact Horizontal Pill Tray** extending beside the bubble with outline quick-action icons + Expand
-  - **Expanded Full Control Panel** with Lock, Power, Bright, Timeout (`30s`, `2m`, `10m`), Settings, Home, `STREAM_MUSIC` Volume slider (`Mute` / `50%` / `100%`), and Brightness slider (`0%` / `25%` / `60%` / `100%`)
+- **Built-In Signature Splash Screen**: Monochrome sunglasses monkey emblem with *"Made by Monkey"* pulse & fade transition on pure `#000000` black.
+- **Space-Black Main Hub**:
+  - Monkey Group header badge + **QuickTouch Assist** branding
+  - Luminous circular **Floating Bubble Preview Orb** with **Change Bubble Icon** (Android Photo Picker, locally stored) and **Reset**
+  - Three slim capsule-pill permission toggles: **Floating Overlay Permission**, **Accessibility Service**, and **Notification Access** (`ACTION_NOTIFICATION_LISTENER_SETTINGS`)
+  - 3×2 circular quick-action buttons: **Volume Up**, **Mute**, **Lock Screen**, **Power Menu**, **Home**, and **Settings**
+  - Outlined **OPEN CONTROL TRAY** capsule button
+- **Floating Bubble, Quick Tray & Mini Music Player**:
+  - Strict 1:1 circular draggable floating bubble (`56dp`) with snap-to-edge behavior
+  - Horizontal quick-action pill tray beside the bubble + **Expanded Full Control Panel** (Lock, Power, Bright, Timeout `30s`/`2m`/`10m`, Volume & Brightness sliders)
+  - Conditional **Mini Music Player** card directly beneath the pill tray powered offline by `MediaSessionManager` and `NotificationListenerService` (visible only when media is actively playing)
 
-## Download Ready-to-Install APK from GitHub
+## Download Signed Release APK from GitHub
 
-Once pushed to GitHub, the included GitHub Actions workflow (`.github/workflows/android-build.yml`) automatically builds `QuickTouch-Assist-debug.apk`:
+Every push to `main`/`master` or `v*` tag runs `.github/workflows/android-build.yml`, automatically generates a release keystore, builds `app-release-signed.apk` (`android:debuggable="false"`), and publishes a public GitHub Release:
 
-1. Open your repository on GitHub and click **Releases** (right sidebar) → download **`QuickTouch-Assist-debug.apk`** under **QuickTouch Assist — Latest Build**.
-   - Alternatively, open the **Actions** tab → select the latest **Build QuickTouch Assist APK** run → download **`QuickTouch-Assist-debug-apk`** from **Artifacts**.
-2. Transfer/open the APK on your Android phone and allow installing unknown apps when prompted.
+1. Open your repository's **Releases** page on GitHub (or `/releases/latest`).
+2. Download **`app-release-signed.apk`** and install it on your Android device.
 
-## Clone & Build Locally from GitHub
+## Clone & Build Locally
 
 ```bash
 git clone <your-github-repo-url>
@@ -30,13 +31,11 @@ cd <repo-folder>
 ./gradlew assembleDebug
 ```
 
-- On Windows: `gradlew.bat assembleDebug`
-- Or open the cloned folder directly in **Android Studio** and press **Run**.
-- The debug signing keystore (`debug.keystore`) is automatically restored from `debug.keystore.base64` during Gradle configuration if not already present.
+To build a signed release APK locally:
 
-## On-Device Permissions Setup
-
-After installing on your Android/MIUI device:
-1. **Floating Overlay Permission**: Tap the card in the app to enable *Display over other apps*.
-2. **Accessibility Service**: Tap the card to enable *QuickTouch Assist* in Accessibility settings (required for Lock Screen and Power Menu global actions).
-3. **Modify System Settings** *(prompted on first brightness/timeout change)*: Allow *Modify system settings* so brightness and screen timeout controls can update system values.
+```bash
+keytool -genkeypair -v -keystore my-upload-key.jks -storetype PKCS12 \
+  -alias upload -storepass YourPass -keypass YourPass \
+  -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Monkey Group,O=Monkey Group,C=US"
+KEYSTORE_PATH="$PWD/my-upload-key.jks" STORE_PASSWORD=YourPass KEY_PASSWORD=YourPass ./gradlew assembleRelease
+```

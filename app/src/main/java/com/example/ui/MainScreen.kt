@@ -1,7 +1,11 @@
 package com.example.ui
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -11,29 +15,29 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.VolumeOff
 import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.PowerSettingsNew
 import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -48,8 +52,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -61,22 +70,19 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.R
 import com.example.service.QuickTouchSharedState
-import com.example.ui.components.BubbleAvatar
 import com.example.ui.components.FullControlPanelContent
-import com.example.ui.components.PresetChip
 import com.example.ui.components.QuickTouchLogoBadge
 import com.example.ui.theme.BorderStrong
 import com.example.ui.theme.BorderSubtle
 import com.example.ui.theme.PitchBlack
+import com.example.ui.theme.PureBlack
 import com.example.ui.theme.PureWhite
 import com.example.ui.theme.SlateCard
-import com.example.ui.theme.SlateTile
 import com.example.ui.theme.SoftWhite
 import com.example.ui.theme.SwitchTrackOff
 import com.example.ui.theme.SwitchTrackOn
 import com.example.ui.theme.TextDim
 import com.example.ui.theme.TextSecondary
-import com.example.ui.theme.TopBarDark
 
 @Composable
 fun MainScreen(
@@ -104,34 +110,41 @@ fun MainScreen(
   onSelectTimeout: (Int) -> Unit,
 ) {
   Scaffold(
-    containerColor = PitchBlack,
+    containerColor = PureBlack,
     contentWindowInsets = WindowInsets(0, 0, 0, 0),
     topBar = {
-      Column(
+      Row(
         modifier =
           Modifier
             .fillMaxWidth()
-            .background(TopBarDark)
-            .statusBarsPadding(),
+            .background(PureBlack)
+            .statusBarsPadding()
+            .padding(horizontal = 20.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
       ) {
-        Row(
-          modifier =
-            Modifier
-              .fillMaxWidth()
-              .padding(horizontal = 18.dp, vertical = 14.dp),
-          verticalAlignment = Alignment.CenterVertically,
-          horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-          QuickTouchLogoBadge(size = 38.dp)
+        QuickTouchLogoBadge(size = 46.dp)
+        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
           Text(
             text = stringResource(R.string.app_name),
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleLarge.copy(
+              fontWeight = FontWeight.Bold,
+              fontSize = 21.sp,
+            ),
             color = PureWhite,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
           )
+          Text(
+            text = stringResource(R.string.brand_subtitle),
+            style = MaterialTheme.typography.labelSmall.copy(
+              fontWeight = FontWeight.Medium,
+              letterSpacing = 1.1.sp,
+            ),
+            color = TextSecondary,
+            maxLines = 1,
+          )
         }
-        HorizontalDivider(thickness = 1.dp, color = BorderSubtle)
       }
     },
     bottomBar = {
@@ -139,29 +152,33 @@ fun MainScreen(
         modifier =
           Modifier
             .fillMaxWidth()
-            .background(PitchBlack)
+            .background(PureBlack)
             .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 20.dp, vertical = 14.dp),
         contentAlignment = Alignment.Center,
       ) {
-        Button(
+        OutlinedButton(
           onClick = onOpenFullControlTray,
           modifier =
             Modifier
-              .widthIn(max = 600.dp)
+              .widthIn(max = 560.dp)
               .fillMaxWidth()
-              .height(52.dp)
+              .height(54.dp)
               .testTag("open_full_control_tray_button"),
-          shape = RoundedCornerShape(26.dp),
+          shape = RoundedCornerShape(50),
+          border = BorderStroke(1.5.dp, PureWhite),
           colors =
-            ButtonDefaults.buttonColors(
-              containerColor = PureWhite,
-              contentColor = PitchBlack,
+            ButtonDefaults.outlinedButtonColors(
+              containerColor = PureBlack,
+              contentColor = PureWhite,
             ),
         ) {
           Text(
-            text = stringResource(R.string.open_full_control_tray),
-            style = MaterialTheme.typography.labelLarge,
+            text = stringResource(R.string.open_control_tray),
+            style = MaterialTheme.typography.labelLarge.copy(
+              fontWeight = FontWeight.Bold,
+              letterSpacing = 0.8.sp,
+            ),
           )
         }
       }
@@ -171,277 +188,171 @@ fun MainScreen(
       modifier =
         Modifier
           .fillMaxSize()
+          .background(PureBlack)
           .padding(innerPadding),
       contentAlignment = Alignment.TopCenter,
     ) {
       Column(
         modifier =
           Modifier
-            .widthIn(max = 600.dp)
+            .widthIn(max = 560.dp)
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 20.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
       ) {
-        // 1. Floating Overlay Permission Card
-        PermissionStatusCard(
-          title = stringResource(R.string.permission_overlay_title),
-          statusText =
-            if (state.isOverlayPermissionGranted) {
-              stringResource(R.string.status_enabled)
-            } else {
-              stringResource(R.string.status_disabled)
-            },
-          checked = state.isOverlayPermissionGranted,
-          testTag = "overlay_permission_card",
-          switchTestTag = "overlay_permission_switch",
-          onClick = onToggleOverlayPermission,
-        )
-
-        // 2. Accessibility Service Card
-        PermissionStatusCard(
-          title = stringResource(R.string.permission_accessibility_title),
-          statusText =
-            if (state.isAccessibilityActive) {
-              stringResource(R.string.status_active)
-            } else {
-              stringResource(R.string.status_inactive)
-            },
-          checked = state.isAccessibilityActive,
-          testTag = "accessibility_service_card",
-          switchTestTag = "accessibility_service_switch",
-          onClick = onToggleAccessibility,
-        )
-
-        // 3. Notification Access Card
-        PermissionStatusCard(
-          title = stringResource(R.string.permission_notification_access_title),
-          statusText =
-            if (state.isNotificationAccessEnabled) {
-              stringResource(R.string.status_enabled)
-            } else {
-              stringResource(R.string.status_disabled)
-            },
-          checked = state.isNotificationAccessEnabled,
-          testTag = "notification_access_card",
-          switchTestTag = "notification_access_switch",
-          onClick = onToggleNotificationAccess,
-        )
-
-        // 3. Custom Floating Icon Card
-        Surface(
-          modifier = Modifier.fillMaxWidth(),
-          shape = RoundedCornerShape(14.dp),
-          color = SlateCard,
-          border = BorderStroke(1.dp, BorderSubtle),
+        // 1. Centered Luminous Floating Bubble Preview Orb + Change / Reset controls
+        Column(
+          horizontalAlignment = Alignment.CenterHorizontally,
+          verticalArrangement = Arrangement.spacedBy(14.dp),
+          modifier = Modifier.padding(vertical = 4.dp),
         ) {
-          Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+          LuminousBubblePreviewOrb(
+            customBitmap = state.customIconBitmap,
+            modifier = Modifier.testTag("custom_icon_preview"),
+          )
+
+          Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
           ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            OutlinedButton(
+              onClick = onChooseImage,
+              modifier =
+                Modifier
+                  .height(44.dp)
+                  .testTag("choose_image_button"),
+              shape = RoundedCornerShape(50),
+              border = BorderStroke(1.dp, BorderStrong.copy(alpha = 0.7f)),
+              colors =
+                ButtonDefaults.outlinedButtonColors(
+                  containerColor = Color(0xFF0C0E12),
+                  contentColor = PureWhite,
+                ),
+              contentPadding = PaddingValues(horizontal = 18.dp),
+            ) {
               Text(
-                text = stringResource(R.string.custom_icon_title),
-                style = MaterialTheme.typography.titleMedium,
-                color = PureWhite,
-              )
-              Text(
-                text = stringResource(R.string.custom_icon_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = TextSecondary,
+                text = stringResource(R.string.change_bubble_icon),
+                style = MaterialTheme.typography.labelLarge.copy(
+                  fontWeight = FontWeight.Medium,
+                  letterSpacing = 0.2.sp,
+                ),
               )
             }
 
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              verticalAlignment = Alignment.CenterVertically,
-              horizontalArrangement = Arrangement.spacedBy(18.dp),
+            TextButton(
+              onClick = onResetImage,
+              enabled = state.hasCustomIcon,
+              modifier = Modifier.height(44.dp).testTag("reset_image_button"),
+              colors =
+                ButtonDefaults.textButtonColors(
+                  contentColor = TextSecondary,
+                  disabledContentColor = TextDim,
+                ),
             ) {
-              BubbleAvatar(
-                customBitmap = state.customIconBitmap,
-                size = 70.dp,
-                modifier = Modifier.testTag("custom_icon_preview"),
+              Text(
+                text = stringResource(R.string.reset_short),
+                style = MaterialTheme.typography.labelLarge.copy(
+                  fontWeight = FontWeight.Normal,
+                  letterSpacing = 0.1.sp,
+                ),
               )
-
-              Column(
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.weight(1f),
-              ) {
-                Row(
-                  verticalAlignment = Alignment.CenterVertically,
-                  horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                  OutlinedButton(
-                    onClick = onChooseImage,
-                    modifier =
-                      Modifier
-                        .height(48.dp)
-                        .testTag("choose_image_button"),
-                    shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, BorderStrong),
-                    colors =
-                      ButtonDefaults.outlinedButtonColors(
-                        containerColor = SlateTile,
-                        contentColor = PureWhite,
-                      ),
-                    contentPadding = PaddingValues(horizontal = 14.dp),
-                  ) {
-                    Icon(
-                      imageVector = Icons.Outlined.Image,
-                      contentDescription = null,
-                      modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                      text = stringResource(R.string.choose_image),
-                      style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 0.2.sp),
-                    )
-                  }
-
-                  if (state.hasCustomIcon) {
-                    TextButton(
-                      onClick = onResetImage,
-                      modifier = Modifier.height(48.dp).testTag("reset_image_button"),
-                      colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary),
-                    ) {
-                      Text(
-                        text = stringResource(R.string.reset_icon),
-                        style = MaterialTheme.typography.labelMedium,
-                      )
-                    }
-                  }
-                }
-
-                Text(
-                  text = "Local PNG/JPG · Auto-cropped to circle",
-                  style = MaterialTheme.typography.bodySmall,
-                  color = TextDim,
-                )
-              }
             }
           }
         }
 
-        // 4. Quick Actions Grid
-        Surface(
+        Spacer(modifier = Modifier.height(2.dp))
+
+        // 2. Three Slim Horizontal Capsule-Pill Permission Rows
+        Column(
           modifier = Modifier.fillMaxWidth(),
-          shape = RoundedCornerShape(14.dp),
-          color = SlateCard,
-          border = BorderStroke(1.dp, BorderSubtle),
+          verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-          Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+          CapsulePermissionRow(
+            title = stringResource(R.string.permission_overlay_title),
+            checked = state.isOverlayPermissionGranted,
+            testTag = "overlay_permission_card",
+            switchTestTag = "overlay_permission_switch",
+            onClick = onToggleOverlayPermission,
+          )
+
+          CapsulePermissionRow(
+            title = stringResource(R.string.permission_accessibility_title),
+            checked = state.isAccessibilityActive,
+            testTag = "accessibility_service_card",
+            switchTestTag = "accessibility_service_switch",
+            onClick = onToggleAccessibility,
+          )
+
+          CapsulePermissionRow(
+            title = stringResource(R.string.permission_notification_access_title),
+            checked = state.isNotificationAccessEnabled,
+            testTag = "notification_access_card",
+            switchTestTag = "notification_access_switch",
+            onClick = onToggleNotificationAccess,
+          )
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        // 3. 3x2 Grid of Circular Dark-Bordered Quick-Action Buttons
+        Column(
+          modifier = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
+          verticalArrangement = Arrangement.spacedBy(14.dp),
+          horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
           ) {
-            Text(
-              text = stringResource(R.string.quick_actions_title),
-              style = MaterialTheme.typography.titleMedium,
-              color = PureWhite,
+            CircularQuickActionButton(
+              icon = Icons.AutoMirrored.Outlined.VolumeUp,
+              label = stringResource(R.string.action_volume_up),
+              testTag = "quick_action_volume_up",
+              onClick = onVolumeUp,
             )
-
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-              QuickActionTile(
-                icon = Icons.AutoMirrored.Outlined.VolumeUp,
-                label = stringResource(R.string.action_volume_up),
-                testTag = "quick_action_volume_up",
-                onClick = onVolumeUp,
-                modifier = Modifier.weight(1f),
-              )
-              QuickActionTile(
-                icon = Icons.AutoMirrored.Outlined.VolumeOff,
-                label = stringResource(R.string.action_mute),
-                highlighted = state.systemSnapshot.isMuted,
-                testTag = "quick_action_mute",
-                onClick = onToggleMute,
-                modifier = Modifier.weight(1f),
-              )
-              QuickActionTile(
-                icon = Icons.Outlined.Lock,
-                label = stringResource(R.string.action_lock_screen),
-                testTag = "quick_action_lock_screen",
-                onClick = onLockScreen,
-                modifier = Modifier.weight(1f),
-              )
-            }
-
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-              QuickActionTile(
-                icon = Icons.Outlined.PowerSettingsNew,
-                label = stringResource(R.string.action_power_menu),
-                testTag = "quick_action_power_menu",
-                onClick = onPowerMenu,
-                modifier = Modifier.weight(1f),
-              )
-              QuickActionTile(
-                icon = Icons.Outlined.Home,
-                label = stringResource(R.string.action_home),
-                testTag = "quick_action_home",
-                onClick = onHome,
-                modifier = Modifier.weight(1f),
-              )
-              QuickActionTile(
-                icon = Icons.Outlined.Settings,
-                label = stringResource(R.string.action_settings),
-                testTag = "quick_action_settings",
-                onClick = onOpenSettings,
-                modifier = Modifier.weight(1f),
-              )
-            }
+            CircularQuickActionButton(
+              icon = Icons.AutoMirrored.Outlined.VolumeOff,
+              label = stringResource(R.string.action_mute),
+              highlighted = state.systemSnapshot.isMuted,
+              testTag = "quick_action_mute",
+              onClick = onToggleMute,
+            )
+            CircularQuickActionButton(
+              icon = Icons.Outlined.Lock,
+              label = stringResource(R.string.action_lock_screen),
+              testTag = "quick_action_lock_screen",
+              onClick = onLockScreen,
+            )
           }
-        }
 
-        // 5. Brightness Presets Row
-        Surface(
-          modifier = Modifier.fillMaxWidth(),
-          shape = RoundedCornerShape(14.dp),
-          color = SlateCard,
-          border = BorderStroke(1.dp, BorderSubtle),
-        ) {
-          Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
           ) {
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.SpaceBetween,
-              verticalAlignment = Alignment.CenterVertically,
-            ) {
-              Text(
-                text = stringResource(R.string.brightness_presets_title),
-                style = MaterialTheme.typography.titleMedium,
-                color = PureWhite,
-              )
-              Text(
-                text = "${state.systemSnapshot.brightnessPercent}%",
-                style = MaterialTheme.typography.labelMedium,
-                color = TextSecondary,
-              )
-            }
-
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-              listOf(0, 25, 60, 100).forEach { percent ->
-                val selected =
-                  kotlin.math.abs(state.systemSnapshot.brightnessPercent - percent) <= 5
-                PresetChip(
-                  label = "$percent%",
-                  selected = selected,
-                  testTag = "main_brightness_preset_$percent",
-                  onClick = { onSelectBrightnessPreset(percent) },
-                  modifier = Modifier.weight(1f).height(48.dp),
-                )
-              }
-            }
+            CircularQuickActionButton(
+              icon = Icons.Outlined.PowerSettingsNew,
+              label = stringResource(R.string.action_power_menu),
+              testTag = "quick_action_power_menu",
+              onClick = onPowerMenu,
+            )
+            CircularQuickActionButton(
+              icon = Icons.Outlined.Home,
+              label = stringResource(R.string.action_home),
+              testTag = "quick_action_home",
+              onClick = onHome,
+            )
+            CircularQuickActionButton(
+              icon = Icons.Outlined.Settings,
+              label = stringResource(R.string.action_settings),
+              testTag = "quick_action_settings",
+              onClick = onOpenSettings,
+            )
           }
         }
+
+        Spacer(modifier = Modifier.height(4.dp))
       }
     }
   }
@@ -458,7 +369,7 @@ fun MainScreen(
         modifier =
           Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.72f))
+            .background(Color.Black.copy(alpha = 0.78f))
             .clickable(
               interactionSource = dismissInteraction,
               indication = null,
@@ -505,21 +416,21 @@ fun MainScreen(
           )
 
           Surface(
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(50),
             color = SlateCard,
             border = BorderStroke(1.dp, BorderSubtle),
             modifier =
               Modifier
                 .widthIn(max = 380.dp)
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
+                .clip(RoundedCornerShape(50))
                 .clickable {
                   onDismissInAppSheet()
                   onToggleOverlayPermission()
                 },
           ) {
             Row(
-              modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+              modifier = Modifier.padding(horizontal = 16.dp, vertical = 11.dp),
               verticalAlignment = Alignment.CenterVertically,
               horizontalArrangement = Arrangement.SpaceBetween,
             ) {
@@ -544,9 +455,70 @@ fun MainScreen(
 }
 
 @Composable
-private fun PermissionStatusCard(
+private fun LuminousBubblePreviewOrb(
+  customBitmap: Bitmap?,
+  modifier: Modifier = Modifier,
+) {
+  val imageBitmap = remember(customBitmap) { customBitmap?.asImageBitmap() }
+  Box(
+    modifier =
+      modifier
+        .size(136.dp)
+        .drawBehind {
+          drawCircle(
+            brush =
+              Brush.radialGradient(
+                colorStops =
+                  arrayOf(
+                    0.55f to Color.Transparent,
+                    0.78f to Color.White.copy(alpha = 0.28f),
+                    1.0f to Color.Transparent,
+                  ),
+                radius = size.minDimension / 2f,
+              ),
+            radius = size.minDimension / 2f,
+          )
+        },
+    contentAlignment = Alignment.Center,
+  ) {
+    Box(
+      modifier =
+        Modifier
+          .requiredSize(114.dp)
+          .aspectRatio(1f)
+          .clip(CircleShape)
+          .background(PureBlack)
+          .border(2.5.dp, PureWhite, CircleShape),
+      contentAlignment = Alignment.Center,
+    ) {
+      if (imageBitmap != null) {
+        Image(
+          bitmap = imageBitmap,
+          contentDescription = stringResource(R.string.cd_custom_icon_preview),
+          contentScale = ContentScale.Crop,
+          modifier = Modifier.fillMaxSize().clip(CircleShape),
+        )
+      } else {
+        Canvas(modifier = Modifier.fillMaxSize().padding(24.dp)) {
+          val radius = size.minDimension / 2f
+          drawCircle(
+            color = PureWhite,
+            radius = radius * 0.88f,
+            style = Stroke(width = 2.4.dp.toPx()),
+          )
+          drawCircle(
+            color = PureWhite,
+            radius = radius * 0.34f,
+          )
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun CapsulePermissionRow(
   title: String,
-  statusText: String,
   checked: Boolean,
   testTag: String,
   switchTestTag: String,
@@ -556,33 +528,31 @@ private fun PermissionStatusCard(
     modifier =
       Modifier
         .fillMaxWidth()
-        .clip(RoundedCornerShape(14.dp))
+        .height(54.dp)
+        .clip(RoundedCornerShape(50))
         .clickable(onClick = onClick)
         .testTag(testTag),
-    shape = RoundedCornerShape(14.dp),
-    color = SlateCard,
-    border = BorderStroke(1.dp, BorderSubtle),
+    shape = RoundedCornerShape(50),
+    color = Color(0xFF0A0B0D),
+    border =
+      BorderStroke(
+        width = 1.dp,
+        color = if (checked) BorderStrong else BorderSubtle,
+      ),
   ) {
     Row(
-      modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+      modifier = Modifier.fillMaxSize().padding(start = 20.dp, end = 12.dp),
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-      Column(
+      Text(
+        text = title,
+        style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
+        color = SoftWhite,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
         modifier = Modifier.weight(1f),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-      ) {
-        Text(
-          text = title,
-          style = MaterialTheme.typography.titleMedium,
-          color = PureWhite,
-        )
-        Text(
-          text = "Status: $statusText",
-          style = MaterialTheme.typography.bodyMedium,
-          color = if (checked) SoftWhite else TextSecondary,
-        )
-      }
+      )
       Spacer(modifier = Modifier.width(12.dp))
       Switch(
         checked = checked,
@@ -603,30 +573,30 @@ private fun PermissionStatusCard(
 }
 
 @Composable
-private fun QuickActionTile(
+private fun CircularQuickActionButton(
   icon: ImageVector,
   label: String,
   highlighted: Boolean = false,
   testTag: String,
   onClick: () -> Unit,
-  modifier: Modifier = Modifier,
 ) {
   val contentTint = if (highlighted) PitchBlack else PureWhite
   val labelTint = if (highlighted) PitchBlack else SoftWhite
   Surface(
     modifier =
-      modifier
-        .height(72.dp)
-        .clip(RoundedCornerShape(10.dp))
+      Modifier
+        .requiredSize(86.dp)
+        .aspectRatio(1f)
+        .clip(CircleShape)
         .clickable(onClick = onClick)
         .testTag(testTag),
-    shape = RoundedCornerShape(10.dp),
-    color = if (highlighted) PureWhite else SlateTile,
+    shape = CircleShape,
+    color = if (highlighted) PureWhite else Color(0xFF0A0C0F),
     contentColor = contentTint,
     border = BorderStroke(1.dp, if (highlighted) PureWhite else BorderSubtle),
   ) {
     Column(
-      modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 8.dp),
+      modifier = Modifier.fillMaxSize().padding(horizontal = 6.dp),
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.Center,
     ) {
@@ -634,14 +604,16 @@ private fun QuickActionTile(
         imageVector = icon,
         contentDescription = label,
         tint = contentTint,
-        modifier = Modifier.size(22.dp),
+        modifier = Modifier.size(24.dp),
       )
-      Spacer(modifier = Modifier.height(6.dp))
+      Spacer(modifier = Modifier.height(5.dp))
       Text(
         text = label,
         style =
           MaterialTheme.typography.labelSmall.copy(
-            fontWeight = if (highlighted) FontWeight.SemiBold else FontWeight.Medium,
+            fontSize = 10.sp,
+            lineHeight = 12.sp,
+            fontWeight = if (highlighted) FontWeight.Bold else FontWeight.Medium,
           ),
         color = labelTint,
         maxLines = 1,

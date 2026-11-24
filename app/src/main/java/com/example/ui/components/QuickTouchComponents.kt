@@ -89,38 +89,25 @@ import com.example.ui.theme.TextSecondary
 
 @Composable
 fun QuickTouchLogoBadge(
-  size: Dp = 36.dp,
+  size: Dp = 44.dp,
   modifier: Modifier = Modifier,
 ) {
   Box(
     modifier =
       modifier
-        .size(size)
+        .requiredSize(size)
+        .aspectRatio(1f)
         .clip(CircleShape)
-        .background(PitchBlack)
-        .border(1.5.dp, PureWhite.copy(alpha = 0.85f), CircleShape),
+        .background(PureBlack)
+        .border(1.2.dp, PureWhite.copy(alpha = 0.85f), CircleShape),
     contentAlignment = Alignment.Center,
   ) {
-    Canvas(modifier = Modifier.fillMaxSize().padding(size * 0.16f)) {
-      val radius = this.size.minDimension / 2f
-      drawCircle(
-        color = PureWhite.copy(alpha = 0.45f),
-        radius = radius,
-        style = Stroke(width = 1.2.dp.toPx()),
-      )
-      drawCircle(
-        color = PureWhite,
-        radius = radius * 0.56f,
-        style = Stroke(width = 2.dp.toPx()),
-      )
-      drawLine(
-        color = PureWhite,
-        start = Offset(center.x + radius * 0.25f, center.y + radius * 0.25f),
-        end = Offset(center.x + radius * 0.68f, center.y + radius * 0.68f),
-        strokeWidth = 2.dp.toPx(),
-        cap = StrokeCap.Round,
-      )
-    }
+    Image(
+      painter = androidx.compose.ui.res.painterResource(id = R.drawable.monkey_emblem),
+      contentDescription = stringResource(R.string.cd_app_logo),
+      contentScale = ContentScale.Crop,
+      modifier = Modifier.fillMaxSize().clip(CircleShape),
+    )
   }
 }
 

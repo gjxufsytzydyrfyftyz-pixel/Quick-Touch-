@@ -8,14 +8,20 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.MainScreen
 import com.example.ui.MainViewModel
+import com.example.ui.SplashScreen
 import com.example.ui.theme.QuickTouchTheme
 
 class MainActivity : ComponentActivity() {
@@ -32,6 +38,7 @@ class MainActivity : ComponentActivity() {
     setContent {
       val sharedState by viewModel.sharedState.collectAsStateWithLifecycle()
       val showInAppSheet by viewModel.showInAppControlSheet.collectAsStateWithLifecycle()
+      var showSplash by rememberSaveable { mutableStateOf(true) }
 
       val photoPickerLauncher =
         androidx.activity.compose.rememberLauncherForActivityResult(
@@ -55,34 +62,44 @@ class MainActivity : ComponentActivity() {
       }
 
       QuickTouchTheme {
-        MainScreen(
-          state = sharedState,
-          showInAppControlSheet = showInAppSheet,
-          onToggleOverlayPermission = viewModel::openOverlayPermissionSettings,
-          onToggleAccessibility = viewModel::openAccessibilitySettings,
-          onToggleNotificationAccess = viewModel::openNotificationAccessSettings,
-          onChooseImage = {
-            photoPickerLauncher.launch(
-              PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+        Crossfade(
+          targetState = showSplash,
+          animationSpec = tween(durationMillis = 500),
+          label = "splash_to_main_crossfade",
+        ) { isSplashVisible ->
+          if (isSplashVisible) {
+            SplashScreen(onSplashFinished = { showSplash = false })
+          } else {
+            MainScreen(
+              state = sharedState,
+              showInAppControlSheet = showInAppSheet,
+              onToggleOverlayPermission = viewModel::openOverlayPermissionSettings,
+              onToggleAccessibility = viewModel::openAccessibilitySettings,
+              onToggleNotificationAccess = viewModel::openNotificationAccessSettings,
+              onChooseImage = {
+                photoPickerLauncher.launch(
+                  PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                )
+              },
+              onResetImage = viewModel::resetCustomIcon,
+              onVolumeUp = viewModel::volumeUp,
+              onToggleMute = viewModel::toggleMute,
+              onLockScreen = viewModel::lockScreen,
+              onPowerMenu = viewModel::powerMenu,
+              onHome = viewModel::goHome,
+              onOpenSettings = viewModel::openSystemSettings,
+              onSelectBrightnessPreset = viewModel::setBrightnessPercent,
+              onOpenFullControlTray = viewModel::openFullControlTray,
+              onDismissInAppSheet = viewModel::dismissInAppControlSheet,
+              onVolumeChanged = { percent -> viewModel.setVolumePercent(percent, showUi = false) },
+              onVolumePreset = { percent -> viewModel.setVolumePercent(percent, showUi = true) },
+              onBrightnessDuringDrag = viewModel::setBrightnessDuringDrag,
+              onBrightnessChangeFinished = viewModel::setBrightnessPercent,
+              onCycleBright = viewModel::cycleBrightness,
+              onSelectTimeout = viewModel::setScreenTimeoutMs,
             )
-          },
-          onResetImage = viewModel::resetCustomIcon,
-          onVolumeUp = viewModel::volumeUp,
-          onToggleMute = viewModel::toggleMute,
-          onLockScreen = viewModel::lockScreen,
-          onPowerMenu = viewModel::powerMenu,
-          onHome = viewModel::goHome,
-          onOpenSettings = viewModel::openSystemSettings,
-          onSelectBrightnessPreset = viewModel::setBrightnessPercent,
-          onOpenFullControlTray = viewModel::openFullControlTray,
-          onDismissInAppSheet = viewModel::dismissInAppControlSheet,
-          onVolumeChanged = { percent -> viewModel.setVolumePercent(percent, showUi = false) },
-          onVolumePreset = { percent -> viewModel.setVolumePercent(percent, showUi = true) },
-          onBrightnessDuringDrag = viewModel::setBrightnessDuringDrag,
-          onBrightnessChangeFinished = viewModel::setBrightnessPercent,
-          onCycleBright = viewModel::cycleBrightness,
-          onSelectTimeout = viewModel::setScreenTimeoutMs,
-        )
+          }
+        }
       }
     }
   }

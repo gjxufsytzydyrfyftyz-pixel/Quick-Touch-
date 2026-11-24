@@ -1,4 +1,4 @@
-name: Build QuickTouch Assist APK
+name: Build & Release Signed QuickTouch Assist APK
 
 on:
   push:
@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   build:
-    name: Build Debug APK
+    name: Build Signed Release APK
     runs-on: ubuntu-latest
 
     steps:
@@ -46,24 +46,31 @@ jobs:
           "$SDKMGR" --sdk_root="$SDK_ROOT" "platform-tools" "build-tools;36.0.0" "platforms;android-36" || true
           "$SDKMGR" --sdk_root="$SDK_ROOT" "platforms;android-36.1" || true
 
-      - name: Restore or create debug keystore
+      - name: Generate release keystore & signing environment
         run: |
-          if [ ! -f debug.keystore ] && [ -f debug.keystore.base64 ]; then
-            base64 -d debug.keystore.base64 > debug.keystore || rm -f debug.keystore
-          fi
-          if [ ! -f debug.keystore ]; then
-            keytool -genkeypair -v -keystore debug.keystore \
-              -storepass android -alias androiddebugkey -keypass android \
-              -keyalg RSA -keysize 2048 -validity 10000 \
-              -dname "CN=Android Debug,O=Android,C=US"
-          fi
+          KEYSTORE_FILE="${{ github.workspace }}/my-upload-key.jks"
+          RELEASE_PASS="QuickTouchRelease2026"
+          rm -f "$KEYSTORE_FILE"
+          keytool -genkeypair -v \
+            -keystore "$KEYSTORE_FILE" \
+            -storetype PKCS12 \
+            -alias upload \
+            -storepass "$RELEASE_PASS" \
+            -keypass "$RELEASE_PASS" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=Monkey Group,OU=QuickTouch Assist,O=Monkey Group,C=US"
+          echo "KEYSTORE_PATH=$KEYSTORE_FILE" >> "$GITHUB_ENV"
+          echo "STORE_PASSWORD=$RELEASE_PASS" >> "$GITHUB_ENV"
+          echo "KEY_PASSWORD=$RELEASE_PASS" >> "$GITHUB_ENV"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "9.3.1"
 
-      - name: Build Debug APK
+      - name: Build Signed Release APK
         run: |
           set -o pipefail
           if [ -f ./gradlew ] && [ -f gradle/wrapper/gradle-wrapper.jar ]; then
@@ -72,46 +79,60 @@ jobs:
           else
             CMD="gradle"
           fi
-          if ! "$CMD" assembleDebug --no-daemon --stacktrace 2>&1 | tee gradle_build.log; then
+          if ! "$CMD" assembleRelease --no-daemon --stacktrace 2>&1 | tee gradle_build.log; then
             ERR_MSG=$(grep -E "FAILURE:|What went wrong:|Could not|Execution failed|Exception|ERROR:" gradle_build.log | head -n 12 | tr '\n' ' ')
             if [ -z "$ERR_MSG" ]; then
               ERR_MSG=$(tail -n 15 gradle_build.log | tr '\n' ' ')
             fi
-            echo "::error title=Gradle Build Failed::$ERR_MSG"
+            echo "::error title=Gradle Release Build Failed::$ERR_MSG"
             exit 1
           fi
 
-      - name: Prepare APK artifact
-        run: cp app/build/outputs/apk/debug/app-debug.apk QuickTouch-Assist-debug.apk
+      - name: Prepare & verify signed APK
+        run: |
+          RELEASE_APK=$(find app/build/outputs/apk/release -maxdepth 2 -name "*.apk" | head -n 1)
+          if [ -z "$RELEASE_APK" ]; then
+            echo "::error title=Missing Release APK::No APK found in app/build/outputs/apk/release"
+            exit 1
+          fi
+          cp "$RELEASE_APK" app-release-signed.apk
+          APKSIGNER=$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -name apksigner -type f 2>/dev/null | sort -V | tail -n 1)
+          if [ -n "$APKSIGNER" ]; then
+            "$APKSIGNER" verify --verbose app-release-signed.apk
+          fi
 
-      - name: Upload APK to Workflow Artifacts
+      - name: Upload Signed APK to Workflow Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: QuickTouch-Assist-debug-apk
-          path: QuickTouch-Assist-debug.apk
+          name: QuickTouch-Assist-release-apk
+          path: app-release-signed.apk
           retention-days: 90
 
-      - name: Publish APK to GitHub Releases (Tag)
+      - name: Publish Signed APK to GitHub Releases (Tag)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          files: QuickTouch-Assist-debug.apk
+          files: app-release-signed.apk
           generate_release_notes: true
+          draft: false
+          prerelease: false
+          make_latest: true
 
-      - name: Update Latest APK Release (Main Branch)
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+      - name: Publish Signed APK to Public GitHub Release (Main Branch)
+        if: github.event_name != 'pull_request' && !startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
-        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: latest-apk
+          tag_name: v3.0.${{ github.run_number }}
           target_commitish: ${{ github.sha }}
-          name: QuickTouch Assist — Latest Build
+          name: QuickTouch Assist v3.0.${{ github.run_number }}
           body: |
-            Automated build from `${{ github.ref_name }}` (${{ github.sha }}).
-            Download **QuickTouch-Assist-debug.apk** below to install on your Android device.
-          files: QuickTouch-Assist-debug.apk
-          prerelease: true
+            Signed release build from `${{ github.ref_name }}` (`${{ github.sha }}`).
+            Download **app-release-signed.apk** below to install directly on your Android device.
+          files: app-release-signed.apk
+          draft: false
+          prerelease: false
+          make_latest: true

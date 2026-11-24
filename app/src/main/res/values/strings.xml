@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">QuickTouch Assist</string>
+    <string name="brand_subtitle">BY MONKEY GROUP</string>
+    <string name="made_by_monkey">Made by Monkey</string>
     <string name="accessibility_service_label">QuickTouch Assist</string>
     <string name="accessibility_service_description">Provides global system actions (Lock Screen, Power Menu, Home) and quick floating controls from the QuickTouch Assist overlay.</string>
     <string name="notification_listener_label">QuickTouch Media Listener</string>
@@ -15,10 +17,13 @@
     <string name="status_inactive">Inactive</string>
     <string name="custom_icon_title">Custom Floating Icon</string>
     <string name="custom_icon_subtitle">Upload Your Custom Floating Bubble</string>
+    <string name="change_bubble_icon">Change Bubble Icon</string>
+    <string name="reset_short">Reset</string>
     <string name="choose_image">Choose Image</string>
     <string name="reset_icon">Reset Default</string>
     <string name="quick_actions_title">Quick Actions</string>
     <string name="brightness_presets_title">Brightness Presets</string>
+    <string name="open_control_tray">OPEN CONTROL TRAY</string>
     <string name="open_full_control_tray">OPEN FULL CONTROL TRAY</string>
     <string name="action_volume_up">Volume Up</string>
     <string name="action_mute">Mute</string>
