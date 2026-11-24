@@ -1,4 +1,4 @@
-# QuickTouch Assist (By Monkey Group)
+# QuickTouch Assist 
 
 Minimalist space-black monochrome assistive-touch Android app built with Kotlin and Jetpack Compose. Works 100% offline with zero Firebase or cloud dependencies.
 
